@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Currency to ARS Converter</title>
+    <title>Currency to ARS Converter</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -14,26 +14,24 @@
     <div class="max-w-md mx-auto">
         <div class="bg-white rounded-2xl shadow-xl p-6 mb-4">
             <div class="text-center mb-6">
-                <h1 class="text-2xl font-bold text-gray-800 mb-2">Currency Converter</h1>
-                <p class="text-gray-600 text-sm">JPY/BRL/EUR → USD → ARS</p>
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">Currency to ARS</h1>
+                <p class="text-gray-600 text-sm">Any currency → USD → ARS</p>
             </div>
 
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Select Currency</label>
-                <select id="currency-select" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg">
-                    <option value="JPY">Japanese Yen (JPY)</option>
-                    <option value="BRL">Brazilian Real (BRL)</option>
-                    <option value="EUR">Euro (EUR)</option>
-                </select>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+                <input list="currency-list" id="currency-input"
+                    autocomplete="off" spellcheck="false"
+                    placeholder="Type code or name (e.g. EUR, GBP)"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg" />
+                <datalist id="currency-list"></datalist>
+                <p id="currency-error" class="hidden mt-1 text-sm text-red-600">Unknown currency — try a 3-letter code like EUR or GBP.</p>
             </div>
 
             <div class="mb-6">
-                <label id="currency-label" class="block text-sm font-medium text-gray-700 mb-2">Japanese Yen</label>
-                <div class="relative">
-                    <span id="currency-symbol" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">¥</span>
-                    <input id="amount-input" type="number" placeholder="Enter JPY amount"
-                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg" />
-                </div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                <input id="amount-input" type="number" inputmode="decimal" min="0" placeholder="Enter amount"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg" />
             </div>
 
             <div id="results" class="hidden space-y-4 mb-6">
@@ -85,91 +83,159 @@
         </div>
 
         <div id="rates-box" class="hidden bg-white rounded-2xl shadow-xl p-6">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">Current Exchange Rates</h2>
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Exchange Rates</h2>
             <div class="space-y-3 text-sm">
                 <div class="flex justify-between">
-                    <span class="text-gray-600">1 JPY =</span>
-                    <span id="jpy-rate" class="font-medium"></span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-600">1 BRL =</span>
-                    <span id="brl-rate" class="font-medium"></span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-600">1 EUR =</span>
-                    <span id="eur-rate" class="font-medium"></span>
+                    <span id="selected-rate-label" class="text-gray-600"></span>
+                    <span id="selected-rate-value" class="font-medium"></span>
                 </div>
                 <div class="border-t border-gray-200 my-2 pt-2"></div>
                 <div class="flex justify-between">
-                    <span class="text-gray-600">1 USD = (Official)</span>
+                    <span class="text-gray-600">1 USD (Official)</span>
                     <span id="oficial-rate" class="font-medium"></span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-600">1 USD = (MEP)</span>
+                    <span class="text-gray-600">1 USD (MEP)</span>
                     <span id="mep-rate" class="font-medium"></span>
                 </div>
             </div>
             <div id="last-updated-box" class="hidden mt-4 pt-4 border-t border-gray-200">
                 <p class="text-xs text-gray-500 text-center">
                     Last updated: <span id="last-updated"></span>
-                    <span id="stored-indicator" class="hidden block mt-1 text-green-600">✓ Rates stored for offline use</span>
+                    <span id="stored-indicator" class="hidden block mt-1 text-green-600">✓ Rates cached for offline use</span>
                 </p>
             </div>
         </div>
     </div>
 
     <script>
-        const SYMBOLS = { JPY: '¥', BRL: 'R$', EUR: '€' };
-        const NAMES   = { JPY: 'Japanese Yen', BRL: 'Brazilian Real', EUR: 'Euro' };
+        const CURRENCIES = [
+            { code: 'AED', name: 'UAE Dirham' },
+            { code: 'AUD', name: 'Australian Dollar' },
+            { code: 'BRL', name: 'Brazilian Real' },
+            { code: 'CAD', name: 'Canadian Dollar' },
+            { code: 'CHF', name: 'Swiss Franc' },
+            { code: 'CLP', name: 'Chilean Peso' },
+            { code: 'CNY', name: 'Chinese Yuan' },
+            { code: 'COP', name: 'Colombian Peso' },
+            { code: 'DKK', name: 'Danish Krone' },
+            { code: 'EUR', name: 'Euro' },
+            { code: 'GBP', name: 'British Pound' },
+            { code: 'HKD', name: 'Hong Kong Dollar' },
+            { code: 'HUF', name: 'Hungarian Forint' },
+            { code: 'IDR', name: 'Indonesian Rupiah' },
+            { code: 'ILS', name: 'Israeli Shekel' },
+            { code: 'INR', name: 'Indian Rupee' },
+            { code: 'JPY', name: 'Japanese Yen' },
+            { code: 'KRW', name: 'South Korean Won' },
+            { code: 'MXN', name: 'Mexican Peso' },
+            { code: 'MYR', name: 'Malaysian Ringgit' },
+            { code: 'NOK', name: 'Norwegian Krone' },
+            { code: 'NZD', name: 'New Zealand Dollar' },
+            { code: 'PHP', name: 'Philippine Peso' },
+            { code: 'PLN', name: 'Polish Zloty' },
+            { code: 'RON', name: 'Romanian Leu' },
+            { code: 'SAR', name: 'Saudi Riyal' },
+            { code: 'SEK', name: 'Swedish Krona' },
+            { code: 'SGD', name: 'Singapore Dollar' },
+            { code: 'THB', name: 'Thai Baht' },
+            { code: 'TRY', name: 'Turkish Lira' },
+            { code: 'TWD', name: 'Taiwan Dollar' },
+            { code: 'UAH', name: 'Ukrainian Hryvnia' },
+            { code: 'USD', name: 'US Dollar' },
+            { code: 'UYU', name: 'Uruguayan Peso' },
+            { code: 'ZAR', name: 'South African Rand' },
+        ];
 
-        let rates = {};
-        let storedRates = null;
+        const CURRENCY_CODES = new Set(CURRENCIES.map(c => c.code));
+
+        // usdRates from API: { EUR: 0.92, JPY: 157.5, ... } means 1 USD = X currency
+        // So: 1 currency = 1 / usdRates[code] USD
+        let usdRates = {};
+        let usdToArsOficial = null;
+        let usdToArsMep = null;
+        let storedData = null;
+        let activeCurrencyCode = null;
 
         const el = id => document.getElementById(id);
 
+        // Populate datalist
+        CURRENCIES.forEach(({ code, name }) => {
+            const opt = document.createElement('option');
+            opt.value = `${code} — ${name}`;
+            el('currency-list').appendChild(opt);
+        });
+
+        function parseCode(value) {
+            const v = value.trim().toUpperCase();
+            if (CURRENCY_CODES.has(v)) return v;
+            const match = v.match(/^([A-Z]{2,4})\s*[—–-]/);
+            if (match && CURRENCY_CODES.has(match[1])) return match[1];
+            return null;
+        }
+
         function loadStored() {
-            try { const s = localStorage.getItem('currencyRates'); return s ? JSON.parse(s) : null; }
+            try { const s = localStorage.getItem('arsRates'); return s ? JSON.parse(s) : null; }
             catch { return null; }
         }
 
-        function saveStored(r, ts) {
-            try { localStorage.setItem('currencyRates', JSON.stringify({ rates: r, timestamp: ts.toISOString() })); }
+        function saveStored(data) {
+            try { localStorage.setItem('arsRates', JSON.stringify(data)); }
             catch {}
         }
 
-        function updateCurrencyUI() {
-            const c = el('currency-select').value;
-            el('currency-label').textContent = NAMES[c];
-            el('currency-symbol').textContent = SYMBOLS[c];
-            el('amount-input').placeholder = `Enter ${c} amount`;
-            calculate();
+        function fmt(amount, code) {
+            try {
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency', currency: code,
+                    minimumFractionDigits: 2, maximumFractionDigits: 2
+                }).format(amount);
+            } catch {
+                return `${code} ${amount.toFixed(2)}`;
+            }
+        }
+
+        function updateRatesCard() {
+            if (!activeCurrencyCode || !usdRates[activeCurrencyCode]) return;
+            const toUsd = 1 / usdRates[activeCurrencyCode];
+            el('selected-rate-label').textContent = `1 ${activeCurrencyCode} =`;
+            el('selected-rate-value').textContent = `${toUsd.toFixed(6)} USD`;
+            el('oficial-rate').textContent = `${usdToArsOficial?.toFixed(2)} ARS`;
+            el('mep-rate').textContent = `${usdToArsMep?.toFixed(2)} ARS`;
+            el('rates-box').classList.remove('hidden');
         }
 
         function calculate() {
-            const c = el('currency-select').value;
             const amount = parseFloat(el('amount-input').value);
-            const toUsd = { JPY: rates.jpyToUsd, BRL: rates.brlToUsd, EUR: rates.eurToUsd }[c];
-
-            if (!amount || !toUsd || !rates.usdToArsOficial || !rates.usdToArsMep) {
+            if (!activeCurrencyCode || !amount || !usdRates[activeCurrencyCode] || !usdToArsOficial || !usdToArsMep) {
                 el('results').classList.add('hidden');
                 return;
             }
-
-            const usd = amount * toUsd;
-            el('usd-result').textContent         = `$${usd.toFixed(2)}`;
-            el('ars-oficial-result').textContent  = `$${(usd * rates.usdToArsOficial).toFixed(2)}`;
-            el('ars-mep-result').textContent      = `$${(usd * rates.usdToArsMep).toFixed(2)}`;
+            const usd = amount / usdRates[activeCurrencyCode];
+            el('usd-result').textContent          = fmt(usd, 'USD');
+            el('ars-oficial-result').textContent  = fmt(usd * usdToArsOficial, 'ARS');
+            el('ars-mep-result').textContent      = fmt(usd * usdToArsMep, 'ARS');
             el('results').classList.remove('hidden');
         }
 
-        function showRates(r, ts, fromStorage) {
-            rates = r;
-            el('jpy-rate').textContent    = `$${r.jpyToUsd?.toFixed(6)} USD`;
-            el('brl-rate').textContent    = `$${r.brlToUsd?.toFixed(6)} USD`;
-            el('eur-rate').textContent    = `$${r.eurToUsd?.toFixed(6)} USD`;
-            el('oficial-rate').textContent = `$${r.usdToArsOficial?.toFixed(2)} ARS`;
-            el('mep-rate').textContent    = `$${r.usdToArsMep?.toFixed(2)} ARS`;
-            el('rates-box').classList.remove('hidden');
+        function onCurrencyInput() {
+            const inputVal = el('currency-input').value.trim();
+            const code = parseCode(inputVal);
+            el('currency-error').classList.toggle('hidden', !!code || !inputVal);
+            activeCurrencyCode = code;
+            if (code) {
+                try { localStorage.setItem('lastCurrency', code); } catch {}
+                updateRatesCard();
+            }
+            calculate();
+        }
+
+        function applyData(data, fromStorage) {
+            usdRates = data.usdRates;
+            usdToArsOficial = data.usdToArsOficial;
+            usdToArsMep = data.usdToArsMep;
+            const ts = new Date(data.timestamp);
+            updateRatesCard();
             el('last-updated').textContent = ts.toLocaleTimeString();
             el('last-updated-box').classList.remove('hidden');
             el('stored-indicator').classList.toggle('hidden', !fromStorage);
@@ -191,43 +257,46 @@
             setLoading(true);
             setError(null);
             try {
-                const [jpy, brl, eur, oficial, mep] = await Promise.all([
-                    fetch('https://api.exchangerate-api.com/v4/latest/JPY').then(r => r.json()),
-                    fetch('https://api.exchangerate-api.com/v4/latest/BRL').then(r => r.json()),
-                    fetch('https://api.exchangerate-api.com/v4/latest/EUR').then(r => r.json()),
+                const [usdData, oficialData, mepData] = await Promise.all([
+                    fetch('https://api.exchangerate-api.com/v4/latest/USD').then(r => r.json()),
                     fetch('https://dolarapi.com/v1/dolares/oficial').then(r => r.json()),
                     fetch('https://dolarapi.com/v1/dolares/bolsa').then(r => r.json()),
                 ]);
-                const newRates = {
-                    jpyToUsd: jpy.rates.USD,
-                    brlToUsd: brl.rates.USD,
-                    eurToUsd: eur.rates.USD,
-                    usdToArsOficial: oficial.venta,
-                    usdToArsMep: mep.venta,
+                const data = {
+                    usdRates: usdData.rates,
+                    usdToArsOficial: oficialData.venta,
+                    usdToArsMep: mepData.venta,
+                    timestamp: new Date().toISOString(),
                 };
-                const ts = new Date();
-                saveStored(newRates, ts);
-                storedRates = { rates: newRates, timestamp: ts.toISOString() };
-                showRates(newRates, ts, true);
+                saveStored(data);
+                storedData = data;
+                applyData(data, true);
             } catch {
-                if (storedRates) {
-                    showRates(storedRates.rates, new Date(storedRates.timestamp), true);
-                    setError('Unable to fetch new rates. Using stored rates.');
+                if (storedData) {
+                    applyData(storedData, true);
+                    setError('Unable to fetch new rates. Using cached rates.');
                 } else {
-                    setError('Unable to fetch exchange rates. Please check your internet connection and try again.');
+                    setError('Unable to fetch exchange rates. Please check your connection.');
                 }
             } finally {
                 setLoading(false);
             }
         }
 
-        storedRates = loadStored();
-        el('currency-select').addEventListener('change', updateCurrencyUI);
+        // Init: restore last used currency, default to JPY
+        storedData = loadStored();
+        const lastCode = (() => { try { return localStorage.getItem('lastCurrency'); } catch { return null; } })();
+        const defaultCode = (lastCode && CURRENCY_CODES.has(lastCode)) ? lastCode : 'JPY';
+        activeCurrencyCode = defaultCode;
+        const defaultCurrency = CURRENCIES.find(c => c.code === defaultCode);
+        el('currency-input').value = `${defaultCurrency.code} — ${defaultCurrency.name}`;
+
+        el('currency-input').addEventListener('input', onCurrencyInput);
         el('amount-input').addEventListener('input', calculate);
         el('refresh-btn').addEventListener('click', fetchRates);
 
-        if (storedRates) {
-            showRates(storedRates.rates, new Date(storedRates.timestamp), true);
+        if (storedData) {
+            applyData(storedData, true);
         } else {
             fetchRates();
         }
